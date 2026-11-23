@@ -1,4 +1,3 @@
-
 name: Build NEXA AI TRADER APK
 
 on:
@@ -26,16 +25,33 @@ jobs:
       - name: Extract source ZIP
         run: unzip -o NEXA_AI_TRADER_Android_Source.zip -d source
 
-      - name: Find project and build APK
+      - name: Find project and fix JVM versions
         shell: bash
         run: |
           SETTINGS_FILE=$(find source -name settings.gradle.kts -print -quit)
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "Gradle project not found in ZIP"
+            echo "Gradle project not found"
             exit 1
           fi
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
           cd "$PROJECT_DIR"
+
+          cat >> app/build.gradle.kts <<'EOF'
+
+          android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+          }
+
+          tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+
           gradle assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/app-debug.apk"
 
